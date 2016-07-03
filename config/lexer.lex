@@ -1,5 +1,4 @@
 %{
-#include <stdio.h>
 #include <string>
 #include "node.h"
 #include "parser.h"
@@ -25,6 +24,10 @@ update		{return UPDATE;}
 set			{return SET;}
 delete		{return DELETE;}
 char		{return CHAR;}
+primary		{return PRIMARY;}
+key			{return KEY;}
+not			{return NOT;}
+null		{return NIL;}
 {id}		{yylval.str=new std::string(yytext);
 			return IDENTIFIER;}
 {number}	{yylval.integer=atoi(yytext);

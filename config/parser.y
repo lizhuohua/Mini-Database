@@ -16,6 +16,7 @@ void handle_select(std::string table_name, std::vector<std::string> columns_name
 void handle_insert(std::string table_name,ValueListNode value_list);
 void handle_create(std::string table_name,DefineListNode define_list);
 void handle_update(std::string table_name,std::string column_name,ValueNode *newVal,std::string column, ValueNode *val);
+void handle_delete(std::string table_name,std::string column_name,ValueNode *value);
 %}
 
 %union
@@ -34,7 +35,7 @@ void handle_update(std::string table_name,std::string column_name,ValueNode *new
 %type <node> define;
 %type <str> op
 %type <integer> type;
-%token INSERT INTO VALUES WHERE SELECT FROM UPDATE SET DELETE CREATE TABLE INTEGER CHAR
+%token INSERT INTO VALUES WHERE SELECT FROM UPDATE SET DELETE CREATE TABLE INTEGER CHAR PRIMARY KEY NOT NIL
 %token <str> EQ_OP NE_OP LE_OP GE_OP LT_OP GT_OP
 %left EQ_OP NE_OP LE_OP GE_OP LT_OP GT_OP
 
@@ -72,7 +73,7 @@ input_line
 	|DELETE FROM IDENTIFIER WHERE IDENTIFIER EQ_OP value ';'
 	{
 		debug("delete\n");
-		//handle_delete(*$3,*$5,(ValueNode*)$7);
+		handle_delete(*$3,*$5,(ValueNode*)$7);
 	}
 	;
 define_list
@@ -91,6 +92,11 @@ define
 	:IDENTIFIER type
 	{
 		$$=new DefineNode(*$1,$2);
+	}
+	|IDENTIFIER type PRIMARY KEY
+	{
+		$$=new DefineNode(*$1,$2);
+		((DefineNode*)$$)->primary_key=true;
 	}
 	;
 type

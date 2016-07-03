@@ -1,9 +1,8 @@
-BeginTable a 3 columns
+BeginTable a 3 columns Primary Key 2
 A B C 
 1 2 'lzh' 
 2 2 'hyx' 
 2 2 'hyx' 
-5 5 'shit' 
 EndTable
 BeginTable b 4 columns
 A B C D 
@@ -18,4 +17,7 @@ EndTable
 BeginTable shit 2 columns
 name age 
 'lzh' 21 
+EndTable
+BeginTable fuck 2 columns
+a b 
 EndTable

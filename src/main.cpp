@@ -10,11 +10,12 @@ void read_table();
 void write_table();
 struct Table
 {
-	Table(string name):table_name(name){}
+	Table(string name):table_name(name),primary_key(-1){}
 	Table(){}
 	string table_name;
 	vector<string> columns_name;
 	vector< vector<ValueNode*> > column_values;
+	int primary_key;
 };
 struct Database
 {
@@ -40,11 +41,14 @@ void read_table()
 	FILE *fp=fopen("Database","r");
 	char table_name[100];
 	int columns_num;
+	int primary_key;
 	char value[100];
 	int t;
 	while((t=fscanf(fp,"BeginTable %s %d columns",table_name,&columns_num))&&t!=EOF)
 	{
 		Table table(table_name);
+		if(fscanf(fp," Primary Key %d",&primary_key))
+			table.primary_key=primary_key;
 		for(int i=0;i<columns_num;++i)
 		{
 			fscanf(fp,"%s",value);
@@ -75,7 +79,7 @@ void read_table()
 			}
 		}
 		db.add_table(table);
-		//似乎是换行符需要读一下
+		//换行符需要读一下
 		fgetc(fp);
 	}
 	fclose(fp);
@@ -88,7 +92,12 @@ void write_table()
 	{
 		Table table=db.tables_list[j];
 		int columns_num=table.column_values.size();
-		fprintf(fp,"BeginTable %s %d columns\n",table.table_name.c_str(),columns_num);
+		fprintf(fp,"BeginTable %s %d columns",table.table_name.c_str(),columns_num);
+		if(table.primary_key!=-1)
+		{
+			fprintf(fp," Primary Key %d",table.primary_key);
+		}
+		fprintf(fp,"\n");
 		for(int i=0;i<columns_num;++i)
 		{
 			fprintf(fp,"%s ",table.columns_name[i].c_str());
@@ -296,6 +305,48 @@ void handle_update(string table_name,string column_name,ValueNode *newVal,string
 		if(ok)
 		{
 			table.column_values[j][p]=newVal;
+		}
+	}
+	db.tables_list[i]=table;
+}
+
+void handle_delete(string table_name,string column_name,ValueNode *value)
+{
+	size_t i,j;
+	for(i=0;i<db.tables_list.size();++i)
+	{
+		if(db.tables_list[i].table_name==table_name)
+			break;
+	}
+	Table table=db.tables_list[i];
+	for(j=0;j<table.columns_name.size();++j)
+	{
+		if(table.columns_name[j]==column_name)
+			break;
+	}
+	for(size_t p=0;p<table.column_values[j].size();++p)
+	{
+		NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][p]);
+		StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][p]);
+		int ok=0;
+		if(nn)
+		{
+			if(nn->number==((NumberNode*)value)->number)
+				ok=1;
+		}
+		else
+		{
+			if(sn->str==((StringNode*)value)->str)
+			{
+				ok=1;
+			}
+		}
+		if(ok)
+		{
+			for(size_t k=0;k<table.columns_name.size();++k)
+			{
+				table.column_values[k].erase(table.column_values[k].begin()+p);
+			}
 		}
 	}
 	db.tables_list[i]=table;
