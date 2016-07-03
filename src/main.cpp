@@ -240,6 +240,20 @@ void handle_select(string table_name, vector<string> columns_name, string column
 	}
 }
 
+bool integrity_check(Table table)
+{
+	if(table.primary_key==-1)
+		return true;
+	int primary_key=table.primary_key;
+	int end=table.column_values[primary_key].size()-1;
+	for(size_t i=0;i<table.column_values[0].size();++i)
+	{
+		if(table.column_values[primary_key][i]==table.column_values[primary_key][end])
+			return false;
+	}
+	return true;
+}
+
 void handle_insert(string table_name,ValueListNode value_list)
 {
 	size_t index;
@@ -248,11 +262,16 @@ void handle_insert(string table_name,ValueListNode value_list)
 		if(db.tables_list[index].table_name==table_name)
 			break;
 	}
+	Table table=db.tables_list[index];
 	for(size_t i=0;i<value_list.values.size();++i)
 	{
 		ValueNode *n=value_list.values[i];
-		db.tables_list[index].column_values[i].push_back(n);
+		table.column_values[i].push_back(n);
 	}
+	if(integrity_check(table))
+		db.tables_list[index]=table;
+	else
+		cout<<"不符合完整性"<<endl;
 }
 
 void handle_create(string table_name,DefineListNode define_list)
