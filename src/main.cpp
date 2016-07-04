@@ -245,11 +245,31 @@ bool integrity_check(Table table)
 	if(table.primary_key==-1)
 		return true;
 	int primary_key=table.primary_key;
-	int end=table.column_values[primary_key].size()-1;
+	//int end=table.column_values[primary_key].size()-1;
 	for(size_t i=0;i<table.column_values[0].size();++i)
 	{
-		if(table.column_values[primary_key][i]==table.column_values[primary_key][end])
-			return false;
+		for(size_t j=0;j<table.column_values[0].size();++j)
+		{
+			if(i!=j)
+			{
+				NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[primary_key][i]);
+				StringNode *sn=dynamic_cast<StringNode*>(table.column_values[primary_key][i]);
+				NumberNode *nn2=dynamic_cast<NumberNode*>(table.column_values[primary_key][j]);
+				StringNode *sn2=dynamic_cast<StringNode*>(table.column_values[primary_key][j]);
+				if(nn)
+				{
+					if(nn->number==nn2->number)
+						return false;
+				}
+				else
+				{
+					if(sn->str==sn2->str)
+						return false;
+				}
+			}
+			//if(table.column_values[primary_key][i]==table.column_values[primary_key][j])
+				//return false;
+		}
 	}
 	return true;
 }
@@ -326,7 +346,10 @@ void handle_update(string table_name,string column_name,ValueNode *newVal,string
 			table.column_values[j][p]=newVal;
 		}
 	}
-	db.tables_list[i]=table;
+	if(integrity_check(table))
+		db.tables_list[i]=table;
+	else
+		cout<<"不符合完整性"<<endl;
 }
 
 void handle_delete(string table_name,string column_name,ValueNode *value)
@@ -368,5 +391,8 @@ void handle_delete(string table_name,string column_name,ValueNode *value)
 			}
 		}
 	}
-	db.tables_list[i]=table;
+	if(integrity_check(table))
+		db.tables_list[i]=table;
+	else
+		cout<<"不符合完整性"<<endl;
 }

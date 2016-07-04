@@ -38,7 +38,8 @@ null		{return NIL;}
 "!="		{yylval.str=new std::string(yytext);return NE_OP;}
 ">="		{yylval.str=new std::string(yytext);return GE_OP;}
 ">"			{yylval.str=new std::string(yytext);return GT_OP;}
-'.*'		{yylval.str=new std::string(yytext);return STRING;}
+'[^'.]*'	{yylval.str=new std::string(yytext);return STRING;}
+	/*以上不能用'.*'，否则'abc' 'def'会被连续匹配为一个token*/
 .			{return *yytext;}
 %%
 int yywrap()

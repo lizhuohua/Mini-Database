@@ -2,6 +2,7 @@ BeginTable a 3 columns Primary Key 2
 A B C 
 1 2 'lzh' 
 2 2 'hyx' 
+1 5 'li' 
 EndTable
 BeginTable b 4 columns
 A B C D 
