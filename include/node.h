@@ -40,10 +40,14 @@ public:
 class DefineNode:public Node
 {
 public:
-	DefineNode(std::string name,int t):column_name(name),type(t),primary_key(false){}
+	DefineNode(std::string name,int t):column_name(name),type(t),primary_key(false),not_null(false),foreign_key(false){}
 	std::string column_name;
 	int type;
 	bool primary_key;
+	bool not_null;
+	bool foreign_key;
+	std::string foreign_table;
+	std::string foreign_column;
 };
 
 class DefineListNode:public Node

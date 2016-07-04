@@ -28,7 +28,11 @@ primary		{return PRIMARY;}
 key			{return KEY;}
 not			{return NOT;}
 null		{return NIL;}
+foreign		{return FOREIGN;}
+references	{return REFERENCES;}
 {id}		{yylval.str=new std::string(yytext);
+			return IDENTIFIER;}
+"*"			{yylval.str=new std::string(yytext);
 			return IDENTIFIER;}
 {number}	{yylval.integer=atoi(yytext);
 			return NUMBER;}

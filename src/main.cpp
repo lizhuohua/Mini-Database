@@ -8,6 +8,15 @@ using namespace std;
 extern int yyparse();
 void read_table();
 void write_table();
+#define note(format, args...) fprintf(stdout, "\033[36m" format "\033[0m", ##args)
+
+struct ForeignKey
+{
+	ForeignKey(string a,string b,string c):column(a),foreign_table(b),foreign_column(c){}
+	string column;
+	string foreign_table;
+	string foreign_column;
+};
 struct Table
 {
 	Table(string name):table_name(name),primary_key(-1){}
@@ -15,7 +24,10 @@ struct Table
 	string table_name;
 	vector<string> columns_name;
 	vector< vector<ValueNode*> > column_values;
+	vector<int> columns_type;
 	int primary_key;
+	vector<int> not_null;
+	vector< ForeignKey > foreign_key;
 };
 struct Database
 {
@@ -31,8 +43,10 @@ Database db;
 int main()
 {
 	read_table();
+	note("welcome!\n");
 	yyparse();
 	write_table();
+	note("bye!\n");
 	return 0;
 }
 
@@ -49,6 +63,34 @@ void read_table()
 		Table table(table_name);
 		if(fscanf(fp," Primary Key %d",&primary_key))
 			table.primary_key=primary_key;
+		int c;
+		if(fscanf(fp," Not Null %d:",&c))
+		{
+			for(int i=0;i<c;++i)
+			{
+				int t;
+				fscanf(fp,"%d",&t);
+				table.not_null.push_back(t);
+			}
+		}
+		if(fscanf(fp," Foreign Key %d",&c))
+		{
+			char t[100];
+			char col[100];
+			for(int i=0;i<c;++i)
+			{
+				fscanf(fp,"\nForeign Key for %s :table %s column %s",value,t,col);
+				table.foreign_key.push_back(ForeignKey(value,t,col));
+			}
+		}
+		for(int i=0;i<columns_num;++i)
+		{
+			fscanf(fp,"%s",value);
+			if(strcmp(value,"integer")==0)
+				table.columns_type.push_back(1);
+			else
+				table.columns_type.push_back(2);
+		}
 		for(int i=0;i<columns_num;++i)
 		{
 			fscanf(fp,"%s",value);
@@ -71,6 +113,10 @@ void read_table()
 				if(value[0]=='\'')
 				{
 					table.column_values[i].push_back(new StringNode(value));
+				}
+				else if(strcmp(value,"NULL")==0)
+				{
+					table.column_values[i].push_back(0);
 				}
 				else
 				{
@@ -97,6 +143,31 @@ void write_table()
 		{
 			fprintf(fp," Primary Key %d",table.primary_key);
 		}
+		if(!table.not_null.empty())
+		{
+			fprintf(fp," NotNull %d: ",(int)table.not_null.size());
+			for(size_t i=0;i<table.not_null.size();++i)
+			{
+				fprintf(fp,"%d ",table.not_null[i]);
+			}
+		}
+		if(!table.foreign_key.empty())
+		{
+			fprintf(fp," Foreign Key %d\n",(int)table.foreign_key.size());
+			for(size_t i=0;i<table.foreign_key.size();++i)
+			{
+				fprintf(fp,"Foreign Key for %s :table %s column %s\n",table.foreign_key[i].column.c_str(),table.foreign_key[i].foreign_table.c_str(),table.foreign_key[i].foreign_column.c_str());
+			}
+		}
+		else
+			fprintf(fp,"\n");
+		for(int i=0;i<columns_num;++i)
+		{
+			if(table.columns_type[i]==1)
+				fprintf(fp,"integer ");
+			else
+				fprintf(fp,"char ");
+		}
 		fprintf(fp,"\n");
 		for(int i=0;i<columns_num;++i)
 		{
@@ -107,14 +178,19 @@ void write_table()
 		{
 			for(int k=0;k<columns_num;++k)
 			{
-				NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[k][i]);
-				StringNode *sn=dynamic_cast<StringNode*>(table.column_values[k][i]);
-				if(nn)
-				{
-					fprintf(fp,"%d ",nn->number);
-				}
+				if(table.column_values[k][i]==0)
+					fprintf(fp,"NULL ");
 				else
-					fprintf(fp,"%s ",sn->str.c_str());
+				{
+					NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[k][i]);
+					StringNode *sn=dynamic_cast<StringNode*>(table.column_values[k][i]);
+					if(nn)
+					{
+						fprintf(fp,"%d ",nn->number);
+					}
+					else
+						fprintf(fp,"%s ",sn->str.c_str());
+				}
 			}
 			fprintf(fp,"\n");
 		}
@@ -134,6 +210,12 @@ void handle_select(string table_name, vector<string> columns_name)
 			break;
 		}
 	}
+	note("查询结果：\n");
+
+	//处理星号
+	if(columns_name[0]=="*")
+		columns_name=table.columns_name;
+
 	int size=columns_name.size();
 	for(int i=0;i<size;++i)
 	{
@@ -145,17 +227,22 @@ void handle_select(string table_name, vector<string> columns_name)
 	{
 		for(size_t j=0;j<table.columns_name.size();++j)
 		{
-			NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][i]);
-			StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][i]);
-			for(size_t k=0;k<columns_name.size();++k)
+			if(table.column_values[j][i]==0)
+				cout<<"NULL"<<"\t";
+			else
 			{
-				if(table.columns_name[j]==columns_name[k])
+				NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][i]);
+				StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][i]);
+				for(size_t k=0;k<columns_name.size();++k)
 				{
-					if(nn)
-						cout<<nn->number<<"\t";
-					else
-						cout<<sn->str<<"\t";
-					break;
+					if(table.columns_name[j]==columns_name[k])
+					{
+						if(nn)
+							cout<<nn->number<<"\t";
+						else
+							cout<<sn->str<<"\t";
+						break;
+					}
 				}
 			}
 		}
@@ -197,6 +284,12 @@ void handle_select(string table_name, vector<string> columns_name, string column
 		if(table.columns_name[index]==column)
 			break;
 
+	note("查询结果：\n");
+
+	//处理星号
+	if(columns_name[0]=="*")
+		columns_name=table.columns_name;
+
 	int size=columns_name.size();
 	for(int i=0;i<size;++i)
 	{
@@ -225,12 +318,17 @@ void handle_select(string table_name, vector<string> columns_name, string column
 				{
 					if(table.columns_name[j]==columns_name[k])
 					{
-						NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][i]);
-						StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][i]);
-						if(nn)
-							cout<<nn->number<<"\t";
+						if(table.column_values[j][i]==0)
+							cout<<"NULL\t";
 						else
-							cout<<sn->str<<"\t";
+						{
+							NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][i]);
+							StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][i]);
+							if(nn)
+								cout<<nn->number<<"\t";
+							else
+								cout<<sn->str<<"\t";
+						}
 						break;
 					}
 				}
@@ -242,6 +340,21 @@ void handle_select(string table_name, vector<string> columns_name, string column
 
 bool integrity_check(Table table)
 {
+	//检查类型
+	for(size_t i=0;i<table.columns_name.size();++i)
+	{
+		for(size_t j=0;j<table.column_values[i].size();++j)
+		{
+			NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[i][j]);
+			StringNode *sn=dynamic_cast<StringNode*>(table.column_values[i][j]);
+			if((nn && table.columns_type[i]!=1)||(sn && table.columns_type[i]!=2))
+			{
+				note("不符合类型约束\n");
+				return false;
+			}
+		}
+	}
+	//检查primary key
 	if(table.primary_key==-1)
 		return true;
 	int primary_key=table.primary_key;
@@ -259,16 +372,35 @@ bool integrity_check(Table table)
 				if(nn)
 				{
 					if(nn->number==nn2->number)
+					{
+						note("不符合Primary Key完整性要求\n");
 						return false;
+					}
 				}
 				else
 				{
 					if(sn->str==sn2->str)
+					{
+						note("不符合Primary Key完整性要求\n");
 						return false;
+					}
 				}
 			}
 			//if(table.column_values[primary_key][i]==table.column_values[primary_key][j])
 				//return false;
+		}
+	}
+	//检查not null
+	for(size_t i=0;i<table.not_null.size();++i)
+	{
+		int index=table.not_null[i];
+		for(size_t j=0;j<table.column_values[index].size();++j)
+		{
+			if(table.column_values[index][j]==0)
+			{
+				note("不符合Not Null完整性要求\n");
+				return false;
+			}
 		}
 	}
 	return true;
@@ -289,9 +421,10 @@ void handle_insert(string table_name,ValueListNode value_list)
 		table.column_values[i].push_back(n);
 	}
 	if(integrity_check(table))
+	{
 		db.tables_list[index]=table;
-	else
-		cout<<"不符合完整性"<<endl;
+		note("元组已插入\n");
+	}
 }
 
 void handle_create(string table_name,DefineListNode define_list)
@@ -301,6 +434,14 @@ void handle_create(string table_name,DefineListNode define_list)
 	{
 		table.columns_name.push_back(define_list.defines[i].column_name);
 		table.column_values.push_back(vector<ValueNode*>());
+		//primary key
+		if(define_list.defines[i].primary_key)
+			table.primary_key=i;
+		//not null
+		if(define_list.defines[i].not_null)
+			table.not_null.push_back(i);
+		//type
+		table.columns_type.push_back(define_list.defines[i].type);
 	}
 	db.add_table(table);
 }
@@ -347,9 +488,10 @@ void handle_update(string table_name,string column_name,ValueNode *newVal,string
 		}
 	}
 	if(integrity_check(table))
+	{
 		db.tables_list[i]=table;
-	else
-		cout<<"不符合完整性"<<endl;
+		note("元组已更新\n");
+	}
 }
 
 void handle_delete(string table_name,string column_name,ValueNode *value)
@@ -393,6 +535,4 @@ void handle_delete(string table_name,string column_name,ValueNode *value)
 	}
 	if(integrity_check(table))
 		db.tables_list[i]=table;
-	else
-		cout<<"不符合完整性"<<endl;
 }

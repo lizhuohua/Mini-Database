@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include "node.h"
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define debug(format, args...) fprintf(stdout, "\033[36m" format "\033[0m", ##args)
 #else
@@ -35,44 +35,44 @@ void handle_delete(std::string table_name,std::string column_name,ValueNode *val
 %type <node> define;
 %type <str> op
 %type <integer> type;
-%token INSERT INTO VALUES WHERE SELECT FROM UPDATE SET DELETE CREATE TABLE INTEGER CHAR PRIMARY KEY NOT NIL
+%token INSERT INTO VALUES WHERE SELECT FROM UPDATE SET DELETE CREATE TABLE INTEGER CHAR PRIMARY KEY NOT NIL FOREIGN REFERENCES
 %token <str> EQ_OP NE_OP LE_OP GE_OP LT_OP GT_OP
 %left EQ_OP NE_OP LE_OP GE_OP LT_OP GT_OP
 
 %%
 sql
-	:{debug("sql->empty\n");}
+	:{debug("welcome!\n");}
 	|sql input_line
 	;
 input_line
 	:INSERT INTO IDENTIFIER VALUES '(' value_list ')' ';'
 	{
-		debug("insert\n");
+		debug("元组已插入\n");
 		handle_insert(*$3,*(ValueListNode*)$6);
 	}
 	|CREATE TABLE IDENTIFIER '(' define_list ')' ';'
 	{
-		debug("create\n");
+		debug("已创建表%s\n",$3->c_str());
 		handle_create(*$3,*(DefineListNode*)$5);
 	}
 	|SELECT column_list FROM IDENTIFIER ';'
 	{
-		debug("select\n");
+		debug("查询结果：\n");
 		handle_select(*$4,*$2);
 	}
 	|SELECT column_list FROM IDENTIFIER WHERE IDENTIFIER op value ';'
 	{
-		debug("select ... where\n");
+		debug("查询结果：\n");
 		handle_select(*$4,*$2,*$6,*$7,(ValueNode*)$8);
 	}
 	|UPDATE IDENTIFIER SET IDENTIFIER EQ_OP value WHERE IDENTIFIER EQ_OP value ';'
 	{
-		debug("update\n");
+		debug("表%s已更新\n",$2->c_str());
 		handle_update(*$2,*$4,(ValueNode*)$6,*$8,(ValueNode*)$10);
 	}
 	|DELETE FROM IDENTIFIER WHERE IDENTIFIER EQ_OP value ';'
 	{
-		debug("delete\n");
+		debug("元组已删除\n");
 		handle_delete(*$3,*$5,(ValueNode*)$7);
 	}
 	;
@@ -97,6 +97,18 @@ define
 	{
 		$$=new DefineNode(*$1,$2);
 		((DefineNode*)$$)->primary_key=true;
+	}
+	|IDENTIFIER type NOT NIL
+	{
+		$$=new DefineNode(*$1,$2);
+		((DefineNode*)$$)->not_null=true;
+	}
+	|IDENTIFIER type FOREIGN KEY REFERENCES IDENTIFIER '(' IDENTIFIER ')'
+	{
+		$$=new DefineNode(*$1,$2);
+		((DefineNode*)$$)->foreign_key=true;
+		((DefineNode*)$$)->foreign_table=*$6;
+		((DefineNode*)$$)->foreign_column=*$8;
 	}
 	;
 type
@@ -142,14 +154,18 @@ value
 	{
 		$$=new StringNode(*$1);
 	}
+	|NIL
+	{
+		$$=NULL;
+	}
 	;
 op
-	:EQ_OP {debug("op -> EQ_OP\n");}
-	|NE_OP {debug("op -> NE_OP\n");}
-	|LE_OP {debug("op -> LE_OP\n");}
-	|GE_OP {debug("op -> GE_OP\n");}
-	|LT_OP {debug("op -> LT_OP\n");}
-	|GT_OP {debug("op -> GT_OP\n");}
+	:EQ_OP
+	|NE_OP
+	|LE_OP
+	|GE_OP
+	|LT_OP
+	|GT_OP
 	;
 %%
 
