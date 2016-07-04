@@ -98,17 +98,17 @@ define
 		$$=new DefineNode(*$1,$2);
 		((DefineNode*)$$)->primary_key=true;
 	}
-	|IDENTIFIER type NOT NIL
-	{
-		$$=new DefineNode(*$1,$2);
-		((DefineNode*)$$)->not_null=true;
-	}
 	|IDENTIFIER type FOREIGN KEY REFERENCES IDENTIFIER '(' IDENTIFIER ')'
 	{
 		$$=new DefineNode(*$1,$2);
 		((DefineNode*)$$)->foreign_key=true;
 		((DefineNode*)$$)->foreign_table=*$6;
 		((DefineNode*)$$)->foreign_column=*$8;
+	}
+	|IDENTIFIER type NOT NIL
+	{
+		$$=new DefineNode(*$1,$2);
+		((DefineNode*)$$)->not_null=true;
 	}
 	;
 type

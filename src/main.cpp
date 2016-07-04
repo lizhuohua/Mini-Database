@@ -403,6 +403,52 @@ bool integrity_check(Table table)
 			}
 		}
 	}
+	//检查foreign key
+	for(size_t i=0;i<table.foreign_key.size();++i)
+	{
+		ForeignKey key=table.foreign_key[i];
+		size_t j,k;
+		//找到拥有该foreign key的列
+		for(j=0;j<table.columns_name.size();++j)
+			if(table.columns_name[j]==key.column)
+				break;
+		//找到该key引用的表
+		for(k=0;k<db.tables_list.size();++k)
+			if(db.tables_list[k].table_name==key.foreign_table)
+				break;
+		Table foreign_table=db.tables_list[k];
+		//找到该key引用的列
+		for(k=0;k<foreign_table.columns_name.size();++k)
+			if(foreign_table.columns_name[k]==key.foreign_column)
+				break;
+		for(size_t p=0;p<table.column_values[j].size();++p)
+		{
+			bool exist=0;
+			for(size_t q=0;q<foreign_table.column_values[k].size();++q)
+			{
+				NumberNode *nn=dynamic_cast<NumberNode*>(table.column_values[j][p]);
+				StringNode *sn=dynamic_cast<StringNode*>(table.column_values[j][p]);
+				NumberNode *nn2=dynamic_cast<NumberNode*>(foreign_table.column_values[k][q]);
+				StringNode *sn2=dynamic_cast<StringNode*>(foreign_table.column_values[k][q]);
+				if(nn && nn2 && nn->number==nn2->number)
+				{
+					exist=1;
+					break;
+				}
+				else if(sn && sn2 && sn->str==sn2->str)
+				{
+					exist=1;
+					break;
+				}
+			}
+			if(!exist)
+			{
+				note("不符合Foreign Key完整性要求\n");
+				return false;
+			}
+		}
+
+	}
 	return true;
 }
 
@@ -442,8 +488,14 @@ void handle_create(string table_name,DefineListNode define_list)
 			table.not_null.push_back(i);
 		//type
 		table.columns_type.push_back(define_list.defines[i].type);
+		//foreign key
+		if(define_list.defines[i].foreign_key)
+		{
+			table.foreign_key.push_back(ForeignKey(define_list.defines[i].column_name,define_list.defines[i].foreign_table,define_list.defines[i].foreign_column));
+		}
 	}
 	db.add_table(table);
+	note("表已创建\n");
 }
 
 void handle_update(string table_name,string column_name,ValueNode *newVal,string column, ValueNode *val)
@@ -534,5 +586,8 @@ void handle_delete(string table_name,string column_name,ValueNode *value)
 		}
 	}
 	if(integrity_check(table))
+	{
 		db.tables_list[i]=table;
+		note("元组已删除\n");
+	}
 }
