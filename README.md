@@ -12,10 +12,12 @@
 
 ## 使用方法
 Linux:
-	git clone https://github.com/lizhuohua/Mini-Database.git
-	cd Mini-Database
-	make
-	cd bin
-	./sql
-
+确保已经安装了flex和bison
+```bash
+git clone https://github.com/lizhuohua/Mini-Database.git
+cd Mini-Database
+make
+cd bin
+./sql
+```
 在test目录下有一个实例文件，演示了所实现的功能。
